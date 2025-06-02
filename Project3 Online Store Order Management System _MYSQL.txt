@@ -1,0 +1,152 @@
+CREATE TABLE Customers (
+    CUSTOMER_ID INT PRIMARY KEY,
+    NAME VARCHAR(50),
+    EMAIL VARCHAR(50),
+    PHONE VARCHAR(15),
+    ADDRESS VARCHAR(100)
+);
+
+CREATE TABLE Products (
+    PRODUCT_ID INT PRIMARY KEY,
+    PRODUCT_NAME VARCHAR(50),
+    CATEGORY VARCHAR(30),
+    PRICE DECIMAL(10,2),
+    STOCK INT
+);
+
+CREATE TABLE Orders (
+    ORDER_ID INT PRIMARY KEY,
+    CUSTOMER_ID INT,
+    PRODUCT_ID INT,
+    QUANTITY INT,
+    ORDER_DATE DATE,
+    FOREIGN KEY (CUSTOMER_ID) REFERENCES Customers(CUSTOMER_ID),
+    FOREIGN KEY (PRODUCT_ID) REFERENCES Products(PRODUCT_ID)
+);
+
+-- Customers
+INSERT INTO Customers VALUES
+(1, 'John Smith', 'john@email.com', '555-0101', '123 Main St, City'),
+(2, 'Emma Davis', 'emma@email.com', '555-0102', '456 Oak Ave, Town'),
+(3, 'Michael Brown', 'michael@email.com', '555-0103', '789 Pine Rd, Village'),
+(4, 'Sarah Wilson', 'sarah@email.com', '555-0104', '321 Elm St, City'),
+(5, 'David Lee', 'david@email.com', '555-0105', '654 Maple Dr, Town');
+
+-- Products
+INSERT INTO Products VALUES
+(101, 'Laptop', 'Electronics', 999.99, 50),
+(102, 'Smartphone', 'Electronics', 699.99, 100),
+(103, 'Coffee Maker', 'Appliances', 79.99, 30),
+(104, 'Running Shoes', 'Sports', 89.99, 200),
+(105, 'Backpack', 'Accessories', 49.99, 0);
+
+-- Orders
+INSERT INTO Orders VALUES
+(1001, 1, 101, 1, '2024-01-15'),
+(1002, 2, 103, 2, '2024-01-16'),
+(1003, 3, 102, 1, '2024-01-17'),
+(1004, 4, 105, 3, '2024-01-18'),
+(1005, 5, 104, 2, '2024-01-19'),
+(1006, 1, 102, 1, '2024-01-20'),
+(1007, 3, 105, 1, '2024-01-21'),
+(1008, 2, 101, 1, '2024-01-22');
+
+-- Retrieve all orders placed by a specific customer.
+SELECT *
+FROM Orders
+WHERE CUSTOMER_ID = 1;
+
+
+-- Find products that are out of stock.
+SELECT *
+FROM Products
+WHERE STOCK = 0;
+
+
+-- Calculate the total revenue generated per product
+SELECT 
+    p.PRODUCT_ID,
+    p.PRODUCT_NAME,
+    SUM(o.QUANTITY * p.PRICE) as TOTAL_REVENUE
+FROM Products p
+LEFT JOIN Orders o ON p.PRODUCT_ID = o.PRODUCT_ID
+GROUP BY p.PRODUCT_ID, p.PRODUCT_NAME
+ORDER BY TOTAL_REVENUE DESC;
+
+
+-- Retrieve the top 5 customers by total purchase amount
+SELECT 
+    c.CUSTOMER_ID,
+    c.NAME,
+    SUM(p.PRICE * o.QUANTITY) AS total_purchase_amount
+FROM 
+    Customers c
+JOIN 
+    Orders o ON c.CUSTOMER_ID = o.CUSTOMER_ID
+JOIN 
+    Products p ON o.PRODUCT_ID = p.PRODUCT_ID
+GROUP BY 
+    c.CUSTOMER_ID, c.NAME
+ORDER BY 
+    total_purchase_amount DESC
+LIMIT 5;
+
+
+-- Find customers who placed orders in at least two different product categories.
+SELECT 
+    c.CUSTOMER_ID,
+    c.NAME,
+    COUNT(DISTINCT p.CATEGORY) as NUMBER_OF_CATEGORIES
+FROM Customers c
+JOIN Orders o ON c.CUSTOMER_ID = o.CUSTOMER_ID
+JOIN Products p ON o.PRODUCT_ID = p.PRODUCT_ID
+GROUP BY c.CUSTOMER_ID, c.NAME
+HAVING COUNT(DISTINCT p.CATEGORY) >= 2
+ORDER BY NUMBER_OF_CATEGORIES DESC;
+
+
+-- Find the month with the highest total sales.
+SELECT 
+    EXTRACT(MONTH FROM ORDER_DATE) as MONTH,
+    SUM(o.QUANTITY * p.PRICE) as TOTAL_SALES
+FROM Orders o
+JOIN Products p ON o.PRODUCT_ID = p.PRODUCT_ID
+GROUP BY 
+    EXTRACT(MONTH FROM ORDER_DATE)
+ORDER BY TOTAL_SALES DESC
+LIMIT 1;
+
+
+-- Identify products with no orders in the last 6 months.
+SELECT p.PRODUCT_ID, p.PRODUCT_NAME, p.CATEGORY
+FROM Products p
+WHERE p.PRODUCT_ID NOT IN (
+    SELECT DISTINCT o.PRODUCT_ID 
+    FROM Orders o 
+    WHERE o.ORDER_DATE >= DATE_SUB(CURRENT_DATE, INTERVAL 6 MONTH)
+);
+
+
+-- Add customers who haven't placed orders
+INSERT INTO Customers (CUSTOMER_ID, NAME, EMAIL, PHONE, ADDRESS) VALUES
+(6, 'Alice Johnson', 'alice@email.com', '555-0106', '123 New St, City'),
+(7, 'Bob Wilson', 'bob@email.com', '555-0107', '456 Old St, City'),
+(8, 'Carol White', 'carol@email.com', '555-0108', '789 Main St, City');
+
+-- Calculate the average order value across all orders.
+SELECT c.CUSTOMER_ID, c.NAME, c.EMAIL, c.PHONE, c.ADDRESS
+FROM Customers c
+LEFT JOIN Orders o ON c.CUSTOMER_ID = o.CUSTOMER_ID
+WHERE o.ORDER_ID IS NULL;
+
+
+-- Calculate the average order value across all orders.
+SELECT
+c.CUSTOMER_ID,
+c.NAME,
+ROUND(AVG(o.QUANTITY * p.PRICE), 2) as AVG_ORDER_VALUE
+FROM Customers c
+JOIN Orders o ON c.CUSTOMER_ID = o.CUSTOMER_ID
+JOIN Products p ON o.PRODUCT_ID = p.PRODUCT_ID
+GROUP BY c.CUSTOMER_ID, c.NAME
+ORDER BY AVG_ORDER_VALUE DESC;
